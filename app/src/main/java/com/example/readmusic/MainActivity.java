@@ -16,11 +16,15 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.MediaStore;
+import android.view.View;
 import android.widget.Button;
+import android.widget.ImageView;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.example.readmusic.Adapter.MusicAdapter;
 import com.example.readmusic.Model.AudioModel;
+import com.example.readmusic.Service.PlayingService;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -28,14 +32,28 @@ import java.util.List;
 public class MainActivity extends AppCompatActivity {
     private RecyclerView rcvMain;
     private Button btnSet;
-    private List<AudioModel> audioModelList;
+    public static List<AudioModel> audioModelList;
     private MusicAdapter musicAdapter;
+
+    private ImageView imgPlay;
+    private ImageView imgPrevious;
+    private ImageView imgNext;
+    private ImageView imgPause;
+    private TextView tvNameSong;
+
+    private PlayingService playingService;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         rcvMain = (RecyclerView) findViewById(R.id.rcvMain);
-        btnSet = (Button) findViewById(R.id.btnSet);
+
+        imgPlay = (ImageView) findViewById(R.id.imgPlay);
+        imgPrevious = (ImageView) findViewById(R.id.imgPrevious);
+        imgNext = (ImageView) findViewById(R.id.imgNext);
+        imgPause = (ImageView) findViewById(R.id.imgPause);
+        tvNameSong = (TextView) findViewById(R.id.tvNameSong);
 
         //call check per
         checkper();
@@ -46,7 +64,13 @@ public class MainActivity extends AppCompatActivity {
         musicAdapter = new MusicAdapter(audioModelList);
         rcvMain.setAdapter(musicAdapter);
         rcvMain.setLayoutManager(new LinearLayoutManager(MainActivity.this));
-
+        playingService = new PlayingService();
+        imgPause.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                playingService.stop();
+            }
+        });
     }
 
     private void checkper() {
@@ -66,6 +90,7 @@ public class MainActivity extends AppCompatActivity {
         String[] projection = {
                 MediaStore.Audio.AudioColumns.TITLE,
                 MediaStore.Audio.Media.ARTIST,
+                MediaStore.Audio.Media._ID,
                 MediaStore.Audio.AudioColumns.DATA,
                 MediaStore.Audio.AudioColumns.DURATION,
                 MediaStore.Audio.AudioColumns.ALBUM_ID
@@ -79,6 +104,7 @@ public class MainActivity extends AppCompatActivity {
                 tempList.add(new AudioModel(
                         cursor.getString(cursor.getColumnIndex(MediaStore.Audio.AudioColumns.TITLE)),
                         cursor.getString(cursor.getColumnIndex(MediaStore.Audio.Media.ARTIST)),
+                        cursor.getString(cursor.getColumnIndex(MediaStore.Audio.Media._ID)),
                         cursor.getString(cursor.getColumnIndex(MediaStore.Audio.AudioColumns.DATA)),
                         cursor.getString(cursor.getColumnIndex(MediaStore.Audio.AudioColumns.DURATION)),
                                 imgParse.toString()
