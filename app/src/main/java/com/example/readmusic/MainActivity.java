@@ -1,6 +1,7 @@
 package com.example.readmusic;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
@@ -8,14 +9,18 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import android.Manifest;
+import android.app.Activity;
 import android.content.ContentUris;
 import android.content.Context;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
 import android.provider.MediaStore;
+import android.provider.Settings;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
@@ -29,7 +34,7 @@ import com.example.readmusic.Service.PlayingService;
 import java.util.ArrayList;
 import java.util.List;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity{
     private RecyclerView rcvMain;
     private Button btnSet;
     public static List<AudioModel> audioModelList;
@@ -69,6 +74,17 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 playingService.stop();
+            }
+        });
+
+        tvNameSong.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (isPermissionsGranted()){
+                    Toast.makeText(v.getContext(), "Permission already granted", Toast.LENGTH_SHORT).show();
+                }else {
+                    takePermission();
+                }
             }
         });
     }
@@ -114,21 +130,62 @@ public class MainActivity extends AppCompatActivity {
         }
         return tempList;
     }
-    //check permission
-    public boolean checkPermissionForReadExtertalStorage(Context context) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            int result = context.checkSelfPermission(android.Manifest.permission.READ_EXTERNAL_STORAGE);
-            return result == PackageManager.PERMISSION_GRANTED;
+    private boolean isPermissionsGranted(){
+        if (Build.VERSION.SDK_INT == Build.VERSION_CODES.R){
+            return Environment.isExternalStorageManager();
+        }else {
+            int readEnternalStoragePermission =
+                    ContextCompat.checkSelfPermission(this,
+                            Manifest.permission.READ_EXTERNAL_STORAGE);
+            return readEnternalStoragePermission == PackageManager.PERMISSION_GRANTED;
         }
-        return false;
+    }
+    private void takePermission(){
+        if (Build.VERSION.SDK_INT == Build.VERSION_CODES.R){
+            try {
+                Intent intent = new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
+                intent.addCategory("android.intent.category.DEFAULT");
+                intent.setData(Uri.parse(String.format("package:%s",getApplicationContext().getPackageName())));
+                startActivityForResult(intent,100);
+            }catch (Exception e){
+                Intent intent = new Intent();
+                intent.setAction(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
+                startActivityForResult(intent,100);
+                e.printStackTrace();
+            }
+        }else {
+            ActivityCompat.requestPermissions(this,
+                    new String[]{Manifest.permission.READ_EXTERNAL_STORAGE},101);
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (resultCode==RESULT_OK){
+            if (requestCode==100){
+                if (Build.VERSION.SDK_INT == Build.VERSION_CODES.R){
+                    if (Environment.isExternalStorageManager()){
+                        Toast.makeText(MainActivity.this, "Permission granted!", Toast.LENGTH_SHORT).show();
+                    }else {
+                        takePermission();
+                    }
+                }
+            }
+        }
     }
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode==999){
-            if (grantResults.length>0&&grantResults[0]==PackageManager.PERMISSION_GRANTED){
-
+        if (grantResults.length>0){
+            if (requestCode==101){
+                boolean readExternalStorage = grantResults[0]==PackageManager.PERMISSION_GRANTED;
+                if (readExternalStorage){
+                    Toast.makeText(MainActivity.this, "Read permission is granted in android 10 and below", Toast.LENGTH_SHORT).show();
+                }else {
+                    takePermission();
+                }
             }
         }
     }
